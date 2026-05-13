@@ -1,10 +1,13 @@
 from google.adk import Agent
 from google.adk.tools.google_search_tool import google_search
-
-GOOGLE_API_KEY =  "AIzaSyAccVYe6tYchSSun8L_hqRh9hnmu8TZCF8"
+from dotenv import load_dotenv
 import os
 
-os.environ["GOOGLE_API_KEY"] = "AIzaSyAccVYe6tYchSSun8L_hqRh9hnmu8TZCF8"
+load_dotenv()
+
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+
 root_agent = Agent(
     model='gemini-2.5-flash',
     name='root_agent',
