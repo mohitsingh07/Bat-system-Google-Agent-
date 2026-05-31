@@ -94,6 +94,74 @@ body {
     word-wrap: break-word;
 }
 
+.chat-bubble-ai h1,
+.chat-bubble-ai h2,
+.chat-bubble-ai h3 {
+    font-weight: bold;
+    margin-top: 12px;
+    margin-bottom: 8px;
+}
+
+.chat-bubble-ai h1 {
+    font-size: 1.5rem;
+}
+
+.chat-bubble-ai h2 {
+    font-size: 1.3rem;
+}
+
+.chat-bubble-ai h3 {
+    font-size: 1.1rem;
+}
+
+.chat-bubble-ai p {
+    margin-bottom: 8px;
+}
+
+.chat-bubble-ai ul,
+.chat-bubble-ai ol {
+    margin-left: 20px;
+    margin-bottom: 10px;
+}
+
+.chat-bubble-ai li {
+    margin-bottom: 4px;
+}
+
+.chat-bubble-ai pre {
+    background: #0f172a;
+    color: #f8fafc;
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.chat-bubble-ai code {
+    background: rgba(255,255,255,0.1);
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.chat-bubble-ai table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.chat-bubble-ai table,
+.chat-bubble-ai th,
+.chat-bubble-ai td {
+    border: 1px solid #475569;
+}
+
+.chat-bubble-ai th,
+.chat-bubble-ai td {
+    padding: 8px;
+    text-align: left;
+}
+
 @media (min-width: 768px) {
     .chat-bubble-user,
     .chat-bubble-ai {
@@ -125,7 +193,48 @@ body {
         transform: scale(1);
     }
 }
+.chat-bubble-ai pre {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0;
+}
 
+.chat-bubble-ai pre code {
+    background: transparent !important;
+    padding: 0 !important;
+    border-radius: 0;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.chat-bubble-ai code:not(pre code) {
+    background: rgba(255,255,255,0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.copy-btn {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    opacity: 0;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+}
+
+.chat-bubble-ai:hover .copy-btn {
+    opacity: 1;
+}
+
+.copy-btn:hover {
+    color: white;
+}
 #chat-window::-webkit-scrollbar {
     width: 4px;
 }
@@ -156,8 +265,18 @@ body {
 </head>
 
 <body class="text-slate-200 flex flex-col md:flex-row h-screen">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
 
-<!-- MOBILE TOP BAR -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+
+<script>
+marked.setOptions({
+    breaks: true,
+    gfm: true
+});
+</script><!-- MOBILE TOP BAR -->
 <div class="md:hidden flex items-center justify-between bg-black border-b border-slate-800 p-4">
     <h1 class="text-yellow-500 font-bold tracking-widest text-sm">
         BAT-SYSTEM
@@ -494,20 +613,66 @@ function setupWebSocket(chatId) {
             const streaming = document.getElementById('streaming-msg');
 
             if (streaming) {
-                streaming.innerText += data.content;
 
-                const win = document.getElementById('chat-window');
+                streaming.dataset.rawContent =
+                    (streaming.dataset.rawContent || '') +
+                    data.content;
+
+                streaming.innerHTML = marked.parse(
+                    streaming.dataset.rawContent
+                );
+
+                streaming.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+
+                const win =
+                    document.getElementById('chat-window');
+
                 win.scrollTop = win.scrollHeight;
             }
 
         } else if (data.type === 'done') {
 
-            const streaming = document.getElementById('streaming-msg');
+    const streaming =
+        document.getElementById('streaming-msg');
 
-            if (streaming) {
-                streaming.id = '';
-            }
-        }
+    if (streaming) {
+
+        streaming.removeAttribute('id');
+
+        const copyBtn = document.createElement('button');
+
+        copyBtn.className =
+            'copy-btn absolute top-2 right-2 text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded';
+
+        copyBtn.innerHTML = '⧉';
+
+        copyBtn.onclick = async () => {
+
+            const text =
+                streaming.innerText.replace('⧉', '').trim();
+
+            await navigator.clipboard.writeText(text);
+
+            copyBtn.innerHTML = '✓ Copied';
+
+            setTimeout(() => {
+                copyBtn.innerHTML = '⧉';
+            }, 2000);
+        };
+
+        streaming.appendChild(copyBtn);
+    }
+}
+    };
+
+    socket.onerror = (err) => {
+        console.error('WebSocket Error:', err);
+    };
+
+    socket.onclose = () => {
+        console.log('WebSocket Closed');
     };
 }
 
@@ -527,13 +692,46 @@ function appendMessage(role, content, isStreaming = false) {
     bubble.className =
         role === 'user'
             ? 'chat-bubble-user'
-            : 'chat-bubble-ai';
+            : 'chat-bubble-ai relative';
 
     if (isStreaming) {
         bubble.id = 'streaming-msg';
+        bubble.dataset.rawContent = '';
     }
 
+    if (role === 'assistant') {
+
+    bubble.innerHTML = marked.parse(content || '');
+
+    bubble.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
+    });
+
+    const copyBtn = document.createElement('button');
+
+    copyBtn.className =
+        'copy-btn absolute top-2 right-2 text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded';
+
+    copyBtn.innerHTML = '⧉';
+
+    copyBtn.onclick = async () => {
+
+        const text =
+            bubble.innerText.replace('⧉', '').trim();
+
+        await navigator.clipboard.writeText(text);
+
+        copyBtn.innerHTML = '✓ Copied';
+
+        setTimeout(() => {
+            copyBtn.innerHTML = '⧉';
+        }, 2000);
+    };
+
+    bubble.appendChild(copyBtn);
+}else {
     bubble.innerText = content;
+}
 
     wrapper.appendChild(bubble);
 
